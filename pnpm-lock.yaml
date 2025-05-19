@@ -12,23 +12,23 @@ importers:
         specifier: 15.3.2
         version: 15.3.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       react:
-        specifier: ^19.0.0
+        specifier: ^19.1.0
         version: 19.1.0
       react-dom:
-        specifier: ^19.0.0
+        specifier: ^19.1.0
         version: 19.1.0(react@19.1.0)
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3
         version: 3.3.1
       '@types/node':
-        specifier: ^20
+        specifier: ^20.17.48
         version: 20.17.48
       '@types/react':
-        specifier: ^19
+        specifier: ^19.1.4
         version: 19.1.4
       '@types/react-dom':
-        specifier: ^19
+        specifier: ^19.1.5
         version: 19.1.5(@types/react@19.1.4)
       eslint:
         specifier: ^9
@@ -37,7 +37,7 @@ importers:
         specifier: 15.3.2
         version: 15.3.2(eslint@9.27.0)(typescript@5.8.3)
       typescript:
-        specifier: ^5
+        specifier: ^5.8.3
         version: 5.8.3
 
 packages:

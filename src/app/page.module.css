@@ -27,11 +27,67 @@
   }
 }
 
+/* 为主页内容添加新样式 */
 .main {
   display: flex;
   flex-direction: column;
-  gap: 32px;
-  grid-row-start: 2;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem;
+  background-color: #ffffff;
+  /* SVG 画布背景为白色 */
+}
+
+.outerContainer {
+  border: 2px solid #1e1e1e;
+  /* SVG 中的黑色边框 */
+  border-radius: 16px;
+  /* 圆角 */
+  padding: 40px;
+  text-align: center;
+  max-width: 700px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  /* 可选：柔和阴影以增加深度 */
+  background-color: #ffffff;
+  /* 容器背景 */
+}
+
+.mainText {
+  font-size: 20px;
+  /* 来自 SVG 文本元素 */
+  color: #1e1e1e;
+  /* 黑色文本 */
+  margin-bottom: 30px;
+  /* 按钮前的间距 */
+  line-height: 1.6;
+  /* SVG 中指定的字体 Xiaolai 和 Excalifont 是自定义字体。
+     如果需要，你需要自行配置这些字体。这里使用默认字体。 */
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+.launchButton {
+  border: 2px solid #1e1e1e;
+  /* 黑色边框 */
+  border-radius: 8px;
+  /* 按钮的圆角 */
+  padding: 15px 30px;
+  font-size: 20px;
+  /* 来自 SVG 文本元素 */
+  color: #1e1e1e;
+  /* 黑色文本 */
+  background-color: #ffffff;
+  /* 白色背景 */
+  cursor: pointer;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+.launchButton:hover {
+  background-color: #1e1e1e;
+  /* 悬停时背景变黑 */
+  color: #ffffff;
+  /* 悬停时文本变白 */
 }
 
 .main ol {

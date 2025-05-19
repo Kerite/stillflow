@@ -1,0 +1,261 @@
+.main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 2rem;
+    background-color: #ffffff;
+}
+
+.container {
+    border: 2px solid #1e1e1e;
+    padding: 20px;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 900px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #1e1e1e;
+}
+
+.icon {
+    border: 2px solid #1e1e1e;
+    padding: 5px 10px;
+    margin-right: 15px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    min-width: 60px;
+    /* Ensure icon area has some width */
+    text-align: center;
+}
+
+.title {
+    font-size: 1.25rem;
+    color: #1e1e1e;
+    border: 2px solid #1e1e1e;
+    padding: 5px 15px;
+    border-radius: 5px;
+}
+
+.content {
+    display: flex;
+    gap: 20px;
+    flex-grow: 1;
+    /* Allow content to fill space */
+}
+
+.locksSection {
+    border: 2px solid #1e1e1e;
+    padding: 15px;
+    border-radius: 8px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.detailsSection {
+    border: 2px solid #1e1e1e;
+    padding: 15px;
+    border-radius: 8px;
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+}
+
+.sectionTitle {
+    font-size: 1.1rem;
+    color: #1e1e1e;
+    margin-bottom: 1rem;
+}
+
+.actionButtons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 1rem;
+}
+
+.button {
+    font-size: 1rem;
+    color: #1e1e1e;
+    background-color: transparent;
+    border: 2px solid #1e1e1e;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.lockList {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 1rem;
+}
+
+.lockItem {
+    border: 2px solid #1e1e1e;
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.descriptionBox {
+    border: 2px solid #1e1e1e;
+    padding: 15px;
+    border-radius: 8px;
+    min-height: 100px;
+    margin-bottom: 1rem;
+    flex-grow: 1;
+}
+
+.descriptionBox p {
+    margin: 0;
+    font-size: 1rem;
+    color: #1e1e1e;
+}
+
+.financialActions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: auto;
+}
+
+.transferButton,
+.withdrawButton {
+    flex-grow: 1;
+}
+
+.backLinkContainer {
+    margin-top: 2rem;
+    align-self: flex-start;
+    /* Align to the left */
+}
+
+.backLink {
+    font-size: 1rem;
+    color: #1e1e1e;
+    text-decoration: none;
+    padding: 8px 15px;
+    border: 2px solid #1e1e1e;
+    border-radius: 5px;
+}
+
+.backLink:hover {
+    background-color: #f0f0f0;
+}
+
+.noLocksText {
+    text-align: center;
+    color: #666;
+    margin-top: 20px;
+}
+
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modalContent {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    border: 2px solid #1e1e1e;
+    width: 90%;
+    max-width: 450px;
+    /* 稍微调大一点以容纳表单 */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modalContent h2 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    /* 增加标题和表单的间距 */
+    color: #1e1e1e;
+    text-align: center;
+}
+
+.formGroup {
+    margin-bottom: 1rem;
+}
+
+.formGroup label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #1e1e1e;
+    font-weight: bold;
+}
+
+.formInput,
+/* 统一表单输入元素的类名 */
+.formGroup select,
+.formGroup input[type="number"],
+.formGroup input[type="date"] {
+    width: 100%;
+    padding: 10px;
+    /* 增加内边距 */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    color: #1e1e1e;
+    background-color: #fff;
+    font-size: 1rem;
+    /* 确保字体大小一致 */
+}
+
+.modalActions {
+    display: flex;
+    justify-content: flex-end;
+    /* 或者 space-between 如果按钮较多 */
+    gap: 10px;
+    margin-top: 1.5rem;
+}
+
+.modalButton {
+    padding: 10px 20px;
+    /* 增加按钮大小 */
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    /* 加粗按钮文字 */
+    color: #1e1e1e;
+    background-color: transparent;
+    border: 2px solid #1e1e1e;
+    transition: background-color 0.2s, color 0.2s;
+    /* 添加过渡效果 */
+}
+
+.modalButton[type="submit"] {
+    background-color: #1e1e1e;
+    /* 主操作按钮样式 */
+    color: #fff;
+}
+
+.modalButton[type="submit"]:hover {
+    background-color: #333;
+    /* 主操作按钮悬停样式 */
+    border-color: #333;
+}
+
+.modalButton[type="button"]:hover {
+    background-color: #f0f0f0;
+    /* 次要操作按钮悬停样式 */
+}
