@@ -107,6 +107,8 @@
     border-radius: 5px;
     text-align: center;
     cursor: pointer;
+    display: flex;
+    flex-direction: column;;
 }
 
 .descriptionBox {
@@ -259,4 +261,8 @@
 .modalButton[type="button"]:hover {
     background-color: #f0f0f0;
     /* 次要操作按钮悬停样式 */
+}
+
+.copyable {
+    cursor: pointer;
 }
