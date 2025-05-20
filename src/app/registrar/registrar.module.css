@@ -167,6 +167,18 @@
     background-color: #fff;
 }
 
+.formGroup input[type="date"] {
+    width: 100%;
+    padding: 10px;
+    /* 增加内边距 */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    color: #1e1e1e;
+    background-color: #fff;
+    font-size: 1rem;
+}
+
 .formGroup textarea {
     min-height: 80px;
     resize: vertical;

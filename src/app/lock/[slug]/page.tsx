@@ -1,22 +1,27 @@
 'use client'; // 需要 'use client' 因为我们使用了 useState 和事件处理
 
-import React, { useState, FormEvent, use } from 'react'; // 导入 use
+import React, { useState, FormEvent, use, useCallback, useEffect } from 'react'; // 导入 use
 import styles from './lock.module.css';
 import Link from 'next/link';
+import { useCurrentAccount, useSignTransaction, useSuiClient } from '@mysten/dapp-kit';
+import { Transaction } from '@mysten/sui/transactions';
+import { PACKAGE_ID } from '@/constants';
+import { bcs } from '@mysten/sui/bcs';
+import { Address } from '@/utils';
 
 // 辅助函数或映射，用于根据 slug 获取标题等信息
-const getLockDetails = (slug: string) => {
-    const detailsMap: { [key: string]: { title: string; iconText: string } } = {
-        'travel-fund': { title: '存钱去旅游', iconText: '旅游' },
-        'education-fund': { title: '存钱去深造', iconText: '深造' },
-        'startup-fund': { title: '存钱去创业', iconText: '创业' },
-        'sui-foundation': { title: 'Sui Foundation', iconText: 'Sui' },
-        'suilend-foundation': { title: 'Suilend Foundation', iconText: 'Suilend' },
-    };
-    // 为动态创建的模块提供默认值
-    const dynamicTitle = slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-    return detailsMap[slug] || { title: dynamicTitle || 'Lock Details', iconText: '模块' };
-};
+// const getLockDetails = (slug: string) => {
+//     const detailsMap: { [key: string]: { title: string; iconText: string } } = {
+//         'travel-fund': { title: '存钱去旅游', iconText: '旅游' },
+//         'education-fund': { title: '存钱去深造', iconText: '深造' },
+//         'startup-fund': { title: '存钱去创业', iconText: '创业' },
+//         'sui-foundation': { title: 'Sui Foundation', iconText: 'Sui' },
+//         'suilend-foundation': { title: 'Suilend Foundation', iconText: 'Suilend' },
+//     };
+//     // 为动态创建的模块提供默认值
+//     const dynamicTitle = slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+//     return detailsMap[slug] || { title: dynamicTitle || 'Lock Details', iconText: '模块' };
+// };
 
 interface LockItemData {
     id: string;
@@ -24,6 +29,7 @@ interface LockItemData {
     quantity: number;
     expiryDate: string;
     moduleSlug: string; // 记录这个 lock 属于哪个模块
+    claimed: boolean;
 }
 
 // 假设的代币选项
@@ -35,15 +41,90 @@ const tokenOptions = [
 
 export default function LockPage({ params: paramsPromise }: { params: Promise<{ slug: string }> }) {
     const params = use(paramsPromise); // 使用 React.use 解构 params
-    const { slug } = params;
-    const lockDetails = getLockDetails(slug);
+    const { slug: registryObjectId } = params;
+    const currentAccount = useCurrentAccount();
+    const [lockDetails, setLockDetails] = useState<{ title: string; iconText: string }>({
+        title: 'Lock Details',
+        iconText: '模块'
+    });
+    const { mutateAsync: signTx } = useSignTransaction();
+
+    const suiClient = useSuiClient();
 
     const [locks, setLocks] = useState<LockItemData[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedToken, setSelectedToken] = useState<string>(tokenOptions[0].value);
     const [tokenQuantity, setTokenQuantity] = useState<number | ''>('');
-    const [expiryDate, setExpiryDate] = useState<string>('');
     const [selectedLockDetail, setSelectedLockDetail] = useState<LockItemData | null>(null); // 新增 state
+
+    const loadDetails = useCallback(async () => {
+        if (!registryObjectId || !currentAccount) {
+            return;
+        }
+        const tx = new Transaction();
+        tx.moveCall({
+            target: `${PACKAGE_ID}::bank::get_registry`,
+            arguments: [
+                tx.object(registryObjectId)
+            ]
+        });
+        const result = await suiClient.devInspectTransactionBlock({
+            transactionBlock: tx,
+            sender: currentAccount.address
+        });
+        const returnValues = result.results![0].returnValues!;
+        // const lockIds = bcs.vector(bcs.u64()).parse(Uint8Array.from(returnValues[4][0]));
+        const lockAddresses = bcs.vector(Address).parse(Uint8Array.from(returnValues[5][0]));
+        const data = {
+            name: bcs.string().parse(Uint8Array.from(returnValues[0][0])),
+            description: bcs.string().parse(Uint8Array.from(returnValues[1][0])),
+            unlockTime: bcs.u64().parse(Uint8Array.from(returnValues[2][0])),
+            lockCount: bcs.u64().parse(Uint8Array.from(returnValues[3][0])),
+            beneficiary: Address.parse(Uint8Array.from(returnValues[6][0])),
+            locks: await Promise.all(lockAddresses.map(async (lockAddress): Promise<LockItemData> => {
+                // Fetch lock details from the blockchain or API
+                const tx = new Transaction();
+
+                tx.moveCall({
+                    target: `${PACKAGE_ID}::bank::get_lock_details`,
+                    arguments: [
+                        tx.object(lockAddress)
+                    ],
+                    typeArguments: ["0x2::sui::SUI"],
+                });
+
+                const result = await suiClient.devInspectTransactionBlock({
+                    transactionBlock: tx,
+                    sender: currentAccount.address
+                });
+
+                if (result.effects.status.status !== "success") {
+                    throw new Error(`Transaction failed: ${result.effects.status.error}`);
+                }
+
+                const returnValues = result.results![0].returnValues!;
+
+                return {
+                    id: lockAddress,
+                    token: 'sui',
+                    quantity: Number(bcs.u64().parse(Uint8Array.from(returnValues[1][0]))),
+                    expiryDate: new Date(Number(bcs.u64().parse(Uint8Array.from(returnValues[2][0])))).toISOString().split('T')[0], // 默认到期日期为一个月后
+                    moduleSlug: registryObjectId,
+                    claimed: bcs.bool().parse(Uint8Array.from(returnValues[3][0])),
+                }
+            })),
+        }
+        setLockDetails({
+            title: data.name,
+            iconText: data.description,
+        });
+        setLocks(data.locks);
+    }, [currentAccount, registryObjectId, suiClient]);
+
+    useEffect(() => {
+        const intervalId = setInterval(loadDetails, 2000);
+        return () => clearInterval(intervalId);
+    }, [loadDetails]);
 
     const handleOpenModal = () => {
         setIsModalOpen(true);
@@ -53,29 +134,49 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
         setIsModalOpen(false);
         setSelectedToken(tokenOptions[0].value);
         setTokenQuantity('');
-        setExpiryDate('');
     };
 
-    const handleSubmitNewLock = (event: FormEvent<HTMLFormElement>) => {
+    const handleSubmitNewLock = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (tokenQuantity === '' || tokenQuantity <= 0) {
             alert('代币数量必须大于0');
             return;
         }
-        if (!expiryDate) {
-            alert('请选择到期日期');
+
+        if (!registryObjectId) {
+            console.error("No registry found");
             return;
         }
-
-        const newLock: LockItemData = {
-            id: `lock-${Date.now()}`,
-            token: selectedToken,
-            quantity: tokenQuantity as number, // 在此断言，因为已经检查过
-            expiryDate: expiryDate,
-            moduleSlug: slug,
-        };
-
-        setLocks([...locks, newLock]);
+        const tx = new Transaction();
+        tx.setGasBudget(10000000);
+        const [coinToLock] = tx.splitCoins(tx.gas, [tokenQuantity]);
+        tx.moveCall({
+            target: `${PACKAGE_ID}::bank::create_lock`,
+            typeArguments: [
+                `0x2::sui::SUI`,
+            ],
+            arguments: [
+                tx.object(registryObjectId),
+                coinToLock,
+            ]
+        });
+        // tx.transferObjects([lockCap], targetAccount);
+        const signedTx = await signTx({
+            transaction: tx
+        });
+        const resp = await suiClient.executeTransactionBlock({
+            transactionBlock: signedTx.bytes,
+            signature: signedTx.signature,
+            options: {
+                showEffects: true,
+                showEvents: true,
+            }
+        });
+        if (resp.effects?.status.status === "success") {
+            alert("Lock created successfully!");
+        } else {
+            alert("Failed to create lock");
+        }
         handleCloseModal();
     };
 
@@ -84,7 +185,44 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
     };
 
     // 过滤当前模块的 locks
-    const currentModuleLocks = locks.filter(lock => lock.moduleSlug === slug);
+    const currentModuleLocks = locks.filter(lock => lock.moduleSlug === registryObjectId);
+
+    const handleClaim = async () => {
+        if (!currentAccount) {
+            alert('请先连接钱包');
+            return;
+        }
+        if (!selectedLockDetail || !currentAccount) {
+            console.error("Missing registry object ID or lockCap");
+            return;
+        }
+        const tx = new Transaction();
+        tx.setGasBudget(10000000);
+        const claimedTokens = tx.moveCall({
+            target: `${PACKAGE_ID}::bank::claim_tokens`,
+            arguments: [
+                tx.object(selectedLockDetail.id),
+                tx.object("0x6")
+            ],
+            typeArguments: ["0x2::sui::SUI"]
+        });
+        tx.transferObjects([claimedTokens], currentAccount.address);
+        const signedTx = await signTx({ transaction: tx });
+        const claimResult = await suiClient.executeTransactionBlock({
+            transactionBlock: signedTx.bytes,
+            signature: signedTx.signature,
+            options: {
+                showEffects: true,
+                showEvents: true,
+            }
+        });
+        if (claimResult.effects?.status.status === "success") {
+            alert("Claim transaction successful!");
+        } else {
+            console.error("Claim transaction failed:", claimResult.effects?.status.error);
+            alert("Claim transaction failed");
+        }
+    }
 
     return (
         <main className={styles.main}>
@@ -113,7 +251,7 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                                     </div>
                                 ))
                             ) : (
-                                <p className={styles.noLocksText}>还没有任何 Locks，点击 "+ Add" 创建一个吧！</p>
+                                <p className={styles.noLocksText}>还没有任何 Locks，点击 &quot;+ Add&quot; 创建一个吧！</p>
                             )}
                         </div>
                     </div>
@@ -125,10 +263,11 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                         <div className={styles.descriptionBox}>
                             {selectedLockDetail ? (
                                 <>
-                                    <p><strong>ID:</strong> {selectedLockDetail.id}</p>
+                                    <p><strong>ID:</strong> {`${selectedLockDetail.id.substring(0, 12)}...${selectedLockDetail.id.substring(selectedLockDetail.id.length - 10)}`}</p>
                                     <p><strong>Token:</strong> {selectedLockDetail.token.toUpperCase()}</p>
                                     <p><strong>Quantity:</strong> {selectedLockDetail.quantity}</p>
                                     <p><strong>Expires:</strong> {selectedLockDetail.expiryDate}</p>
+                                    <p><strong>Claimed:</strong> {selectedLockDetail.claimed ? 'Yes' : 'No'}</p>
                                     {/* <p><strong>Module:</strong> {selectedLockDetail.moduleSlug}</p> */}
                                 </>
                             ) : (
@@ -138,7 +277,7 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                         {selectedLockDetail && ( // 仅当有 Lock 被选中时显示操作按钮
                             <div className={styles.financialActions}>
                                 <button className={`${styles.button} ${styles.transferButton}`}>transfer</button>
-                                <button className={`${styles.button} ${styles.withdrawButton}`}>withdraw</button>
+                                <button onClick={handleClaim} className={`${styles.button} ${styles.withdrawButton}`}>withdraw</button>
                             </div>
                         )}
                     </div>
@@ -181,7 +320,7 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                                     className={styles.formInput}
                                 />
                             </div>
-                            <div className={styles.formGroup}>
+                            {/* <div className={styles.formGroup}>
                                 <label htmlFor="expiryDate">到期日期:</label>
                                 <input
                                     type="date"
@@ -191,7 +330,7 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                                     required
                                     className={styles.formInput}
                                 />
-                            </div>
+                            </div> */}
                             <div className={styles.modalActions}>
                                 <button type="submit" className={styles.modalButton}>Lock!</button>
                                 <button type="button" className={styles.modalButton} onClick={handleCloseModal}>取消</button>
