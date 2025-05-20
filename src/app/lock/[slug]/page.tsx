@@ -25,6 +25,7 @@ import { Address } from '@/utils';
 
 interface LockItemData {
     id: string;
+    creator: string;
     token: string;
     quantity: number;
     expiryDate: string;
@@ -45,7 +46,7 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
     const currentAccount = useCurrentAccount();
     const [lockDetails, setLockDetails] = useState<{ title: string; iconText: string }>({
         title: 'Lock Details',
-        iconText: '模块'
+        iconText: 'Goal'
     });
     const { mutateAsync: signTx } = useSignTransaction();
 
@@ -105,6 +106,7 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                 const returnValues = result.results![0].returnValues!;
 
                 return {
+                    creator: Address.parse(Uint8Array.from(returnValues[0][0])),
                     id: lockAddress,
                     token: 'sui',
                     quantity: Number(bcs.u64().parse(Uint8Array.from(returnValues[1][0]))),
@@ -247,7 +249,12 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                                         key={lock.id}
                                         onClick={() => handleLockItemClick(lock)} // 添加点击事件
                                     >
-                                        Lock #{index + 1}: {lock.quantity} {lock.token.toUpperCase()} (Expires: {lock.expiryDate})
+                                        <span>
+                                            Lock #{index + 1}: {lock.quantity} {lock.token.toUpperCase()}
+                                        </span>
+                                        <span>
+                                            Expires: {lock.expiryDate}
+                                        </span>
                                     </div>
                                 ))
                             ) : (
@@ -263,15 +270,26 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                         <div className={styles.descriptionBox}>
                             {selectedLockDetail ? (
                                 <>
-                                    <p><strong>ID:</strong> {`${selectedLockDetail.id.substring(0, 12)}...${selectedLockDetail.id.substring(selectedLockDetail.id.length - 10)}`}</p>
+                                    <p>
+                                        <strong>ID:</strong>
+                                        <span onClick={() => { navigator.clipboard.writeText(selectedLockDetail.id) }} className={styles.copyable}>
+                                            {`${selectedLockDetail.id.substring(0, 12)}...${selectedLockDetail.id.substring(selectedLockDetail.id.length - 10)}`}
+                                        </span>
+                                    </p>
                                     <p><strong>Token:</strong> {selectedLockDetail.token.toUpperCase()}</p>
                                     <p><strong>Quantity:</strong> {selectedLockDetail.quantity}</p>
                                     <p><strong>Expires:</strong> {selectedLockDetail.expiryDate}</p>
+                                    <p>
+                                        <strong>Creator:</strong>
+                                        <span onClick={() => { navigator.clipboard.writeText(selectedLockDetail.creator) }} className={styles.copyable}>
+                                            {`${selectedLockDetail.creator.substring(0, 12)}...${selectedLockDetail.creator.substring(selectedLockDetail.creator.length - 10)}`}
+                                        </span>
+                                    </p>
                                     <p><strong>Claimed:</strong> {selectedLockDetail.claimed ? 'Yes' : 'No'}</p>
                                     {/* <p><strong>Module:</strong> {selectedLockDetail.moduleSlug}</p> */}
                                 </>
                             ) : (
-                                <p>点击左侧列表中的 Lock 查看详细信息。</p>
+                                <p>Click Lock on the left to view details</p>
                             )}
                         </div>
                         {selectedLockDetail && ( // 仅当有 Lock 被选中时显示操作按钮
@@ -284,7 +302,7 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                 </div>
                 <div className={styles.backLinkContainer}>
                     <Link href="/registrar" className={styles.backLink}>
-                        &larr; Back to Registrar
+                        &larr; Back to Homepage
                     </Link>
                 </div>
             </div>
@@ -308,7 +326,7 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                                 </select>
                             </div>
                             <div className={styles.formGroup}>
-                                <label htmlFor="tokenQuantity">代币数量:</label>
+                                <label htmlFor="tokenQuantity">代币数量(MIST):</label>
                                 <input
                                     type="number"
                                     id="tokenQuantity"

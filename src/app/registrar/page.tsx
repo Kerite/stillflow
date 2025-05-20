@@ -155,10 +155,10 @@ export default function RegistrarPage() {
         <main className={styles.main}>
             <div className={styles.container}>
                 <h1 className={styles.title}>StillFlow</h1>
-                <p className={styles.welcomeText}>welcome to StillFlow</p>
+                <p className={styles.welcomeText}>Welcome to StillFlow</p>
                 <div className={styles.actionsContainer}>
                     <button className={styles.actionButton} onClick={handleOpenModal}>
-                        + create new
+                        + Create New Goal
                     </button>
                 </div>
                 <div className={styles.locksGrid}>
