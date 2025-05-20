@@ -9,6 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@mysten/dapp-kit": "^0.16.3",
+    "@mysten/sui": "^1.29.1",
+    "@tanstack/react-query": "^5.76.1",
     "next": "15.3.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
@@ -21,5 +24,6 @@
     "eslint": "^9",
     "eslint-config-next": "15.3.2",
     "typescript": "^5.8.3"
-  }
+  },
+  "packageManager": "pnpm@9.13.0+sha512.beb9e2a803db336c10c9af682b58ad7181ca0fbd0d4119f2b33d5f2582e96d6c0d93c85b23869295b765170fbdaa92890c0da6ada457415039769edf3c959efe"
 }
