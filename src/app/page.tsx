@@ -6,11 +6,11 @@ export default function HomePage() {
     <main className={styles.main}>
       <div className={styles.outerContainer}>
         <p className={styles.mainText}>
-          stillflow是一个真正将公共账本落到实处的一个应用
+          Stillflow is a protocol that truly implements public ledgers
         </p>
         <Link href="/registrar" passHref>
           <button className={styles.launchButton}>
-            launch APP
+            Launch APP
           </button>
         </Link>
       </div>

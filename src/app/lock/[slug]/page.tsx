@@ -1,31 +1,18 @@
-'use client'; // 需要 'use client' 因为我们使用了 useState 和事件处理
+'use client';
 
 import React, { useState, FormEvent, use, useCallback, useEffect } from 'react'; // 导入 use
 import styles from './lock.module.css';
 import Link from 'next/link';
 import { useCurrentAccount, useSignTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
-import { PACKAGE_ID } from '@/constants';
+import { CREATED_REGISTRIES, PACKAGE_ID, REFRESH_RATE } from '@/constants';
 import { bcs } from '@mysten/sui/bcs';
 import { Address } from '@/utils';
-
-// 辅助函数或映射，用于根据 slug 获取标题等信息
-// const getLockDetails = (slug: string) => {
-//     const detailsMap: { [key: string]: { title: string; iconText: string } } = {
-//         'travel-fund': { title: '存钱去旅游', iconText: '旅游' },
-//         'education-fund': { title: '存钱去深造', iconText: '深造' },
-//         'startup-fund': { title: '存钱去创业', iconText: '创业' },
-//         'sui-foundation': { title: 'Sui Foundation', iconText: 'Sui' },
-//         'suilend-foundation': { title: 'Suilend Foundation', iconText: 'Suilend' },
-//     };
-//     // 为动态创建的模块提供默认值
-//     const dynamicTitle = slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-//     return detailsMap[slug] || { title: dynamicTitle || 'Lock Details', iconText: '模块' };
-// };
 
 interface LockItemData {
     id: string;
     creator: string;
+    owner: string;
     token: string;
     quantity: number;
     expiryDate: string;
@@ -42,6 +29,7 @@ const tokenOptions = [
 
 export default function LockPage({ params: paramsPromise }: { params: Promise<{ slug: string }> }) {
     const params = use(paramsPromise); // 使用 React.use 解构 params
+
     const { slug: registryObjectId } = params;
     const currentAccount = useCurrentAccount();
     const [lockDetails, setLockDetails] = useState<{ title: string; iconText: string }>({
@@ -54,9 +42,12 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
 
     const [locks, setLocks] = useState<LockItemData[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [selectedToken, setSelectedToken] = useState<string>(tokenOptions[0].value);
     const [tokenQuantity, setTokenQuantity] = useState<number | ''>('');
     const [selectedLockDetail, setSelectedLockDetail] = useState<LockItemData | null>(null); // 新增 state
+
+    const [transferAddress, setTransferAddress] = useState<string>('');
 
     const loadDetails = useCallback(async () => {
         if (!registryObjectId || !currentAccount) {
@@ -99,6 +90,8 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                     sender: currentAccount.address
                 });
 
+                console.log("get_lock_details result", result);
+
                 if (result.effects.status.status !== "success") {
                     throw new Error(`Transaction failed: ${result.effects.status.error}`);
                 }
@@ -110,9 +103,11 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                     id: lockAddress,
                     token: 'sui',
                     quantity: Number(bcs.u64().parse(Uint8Array.from(returnValues[1][0]))),
-                    expiryDate: new Date(Number(bcs.u64().parse(Uint8Array.from(returnValues[2][0])))).toISOString().split('T')[0], // 默认到期日期为一个月后
+                    expiryDate: new Date(Number(bcs.u64().parse(Uint8Array.from(returnValues[2][0])))).toLocaleString(), // 默认到期日期为一个月后
                     moduleSlug: registryObjectId,
                     claimed: bcs.bool().parse(Uint8Array.from(returnValues[3][0])),
+                    // @ts-expect-error the type is correct
+                    owner: `${result.effects.mutated?.find(x => x.reference.objectId === lockAddress)?.owner.AddressOwner}` || "",
                 }
             })),
         }
@@ -124,11 +119,11 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
     }, [currentAccount, registryObjectId, suiClient]);
 
     useEffect(() => {
-        const intervalId = setInterval(loadDetails, 2000);
+        const intervalId = setInterval(loadDetails, REFRESH_RATE);
         return () => clearInterval(intervalId);
     }, [loadDetails]);
 
-    const handleOpenModal = () => {
+    const handleOpenModal = async () => {
         setIsModalOpen(true);
     };
 
@@ -188,6 +183,52 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
 
     // 过滤当前模块的 locks
     const currentModuleLocks = locks.filter(lock => lock.moduleSlug === registryObjectId);
+
+    const handleAddToHomepage = () => {
+        const previousList = JSON.parse(localStorage.getItem(CREATED_REGISTRIES) || '[]');
+        const newList = new Set([...previousList, registryObjectId]);
+        localStorage.setItem(CREATED_REGISTRIES, JSON.stringify(Array.from(newList)));
+        alert("Added Goal to homepage");
+    }
+
+    const handleTransfer = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!currentAccount) {
+            alert('请先连接钱包');
+            return;
+        }
+        if (!selectedLockDetail) {
+            console.error("Missing registry object ID or lockCap");
+            return;
+        }
+
+        console.log("Transfering lock", selectedLockDetail.id, "to", transferAddress);
+        const tx = new Transaction();
+        tx.setGasBudget(10000000);
+        tx.moveCall({
+            target: `${PACKAGE_ID}::bank::transfer_lock`,
+            arguments: [
+                tx.object(selectedLockDetail.id),
+                tx.pure.address(transferAddress),
+            ],
+            typeArguments: ["0x2::sui::SUI"]
+        });
+        const signedTx = await signTx({ transaction: tx });
+        const result = await suiClient.executeTransactionBlock({
+            transactionBlock: signedTx.bytes,
+            signature: signedTx.signature,
+            options: {
+                showEffects: true,
+                showEvents: true,
+            }
+        });
+        if (result.effects?.status.status === "success") {
+            alert("Transfer transaction successful!");
+        } else {
+            console.error("Transfer transaction failed:", result.effects?.status.error);
+            alert("Transfer transaction failed");
+        }
+    }
 
     const handleClaim = async () => {
         if (!currentAccount) {
@@ -258,7 +299,7 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                                     </div>
                                 ))
                             ) : (
-                                <p className={styles.noLocksText}>还没有任何 Locks，点击 &quot;+ Add&quot; 创建一个吧！</p>
+                                <p className={styles.noLocksText}>There are no Locks, click &quot;+ Add&quot; to create one!</p>
                             )}
                         </div>
                     </div>
@@ -280,6 +321,12 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                                     <p><strong>Quantity:</strong> {selectedLockDetail.quantity}</p>
                                     <p><strong>Expires:</strong> {selectedLockDetail.expiryDate}</p>
                                     <p>
+                                        <strong>Owner:</strong>
+                                        <span onClick={() => { navigator.clipboard.writeText(selectedLockDetail.owner) }} className={styles.copyable}>
+                                            {`${selectedLockDetail.owner.substring(0, 12)}...${selectedLockDetail.owner.substring(selectedLockDetail.owner.length - 10)}`}
+                                        </span>
+                                    </p>
+                                    <p>
                                         <strong>Creator:</strong>
                                         <span onClick={() => { navigator.clipboard.writeText(selectedLockDetail.creator) }} className={styles.copyable}>
                                             {`${selectedLockDetail.creator.substring(0, 12)}...${selectedLockDetail.creator.substring(selectedLockDetail.creator.length - 10)}`}
@@ -294,7 +341,7 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                         </div>
                         {selectedLockDetail && ( // 仅当有 Lock 被选中时显示操作按钮
                             <div className={styles.financialActions}>
-                                <button className={`${styles.button} ${styles.transferButton}`}>transfer</button>
+                                <button onClick={() => setIsTransferModalOpen(true)} className={`${styles.button} ${styles.transferButton}`}>transfer</button>
                                 <button onClick={handleClaim} className={`${styles.button} ${styles.withdrawButton}`}>withdraw</button>
                             </div>
                         )}
@@ -304,16 +351,43 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                     <Link href="/registrar" className={styles.backLink}>
                         &larr; Back to Homepage
                     </Link>
+                    <button onClick={handleAddToHomepage} className={`${styles.button}`}>
+                        Add Goal to Homepage
+                    </button>
                 </div>
             </div>
 
+            {isTransferModalOpen && (
+                <div className={styles.modalOverlay}>
+                    <div className={styles.modalContent}>
+                        <h2>Transfer Lock {lockDetails.title}</h2>
+                        <form onSubmit={handleTransfer}>
+                            <div>
+                                <label htmlFor="targetAddress">Recipient Address:</label>
+                                <input
+                                    type="text"
+                                    id="targetAddress"
+                                    value={transferAddress}
+                                    onChange={(e) => setTransferAddress(e.target.value)}
+                                    required
+                                    className={styles.formInput}
+                                />
+                            </div>
+                            <div className={styles.modalActions}>
+                                <button type="submit" className={styles.modalButton}>Transfer</button>
+                                <button type="button" className={styles.modalButton} onClick={() => setIsTransferModalOpen(false)}>Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
             {isModalOpen && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
-                        <h2>创建新 Lock for {lockDetails.title}</h2>
+                        <h2>Create New Lock for {lockDetails.title}</h2>
                         <form onSubmit={handleSubmitNewLock}>
                             <div className={styles.formGroup}>
-                                <label htmlFor="tokenSelect">选择代币:</label>
+                                <label htmlFor="tokenSelect">Select Token:</label>
                                 <select
                                     id="tokenSelect"
                                     value={selectedToken}
@@ -326,7 +400,7 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                                 </select>
                             </div>
                             <div className={styles.formGroup}>
-                                <label htmlFor="tokenQuantity">代币数量(MIST):</label>
+                                <label htmlFor="tokenQuantity">Token Amount(MIST):</label>
                                 <input
                                     type="number"
                                     id="tokenQuantity"
@@ -338,20 +412,9 @@ export default function LockPage({ params: paramsPromise }: { params: Promise<{ 
                                     className={styles.formInput}
                                 />
                             </div>
-                            {/* <div className={styles.formGroup}>
-                                <label htmlFor="expiryDate">到期日期:</label>
-                                <input
-                                    type="date"
-                                    id="expiryDate"
-                                    value={expiryDate}
-                                    onChange={(e) => setExpiryDate(e.target.value)}
-                                    required
-                                    className={styles.formInput}
-                                />
-                            </div> */}
                             <div className={styles.modalActions}>
                                 <button type="submit" className={styles.modalButton}>Lock!</button>
-                                <button type="button" className={styles.modalButton} onClick={handleCloseModal}>取消</button>
+                                <button type="button" className={styles.modalButton} onClick={handleCloseModal}>Cancel</button>
                             </div>
                         </form>
                     </div>
