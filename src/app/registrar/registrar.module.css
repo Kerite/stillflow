@@ -3,7 +3,6 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 100vh;
     padding: 2rem;
     background-color: #ffffff;
 }
@@ -167,7 +166,8 @@
     background-color: #fff;
 }
 
-.formGroup input[type="date"] {
+.formGroup input[type="date"],
+.formGroup input[type="datetime-local"] {
     width: 100%;
     padding: 10px;
     /* 增加内边距 */
