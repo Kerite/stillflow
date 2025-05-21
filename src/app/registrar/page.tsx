@@ -90,10 +90,9 @@ export default function RegistrarPage() {
     }, [currentAccount, suiClient]);
 
     useEffect(() => {
+        loadModules();
         const intervalId = setInterval(loadModules, REFRESH_RATE);
-        return () => {
-            clearInterval(intervalId);
-        };
+        return () => clearInterval(intervalId);
     }, [loadModules]);
 
     const handleOpenModal = async () => {
